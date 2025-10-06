@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">Justicebringer</string>
+
+    <!-- Pozitív észrevételek -->
+    <string name="pozitiv_eszrevetel1">Ismeri a lámpaprogramot</string>
+    <string name="pozitiv_eszrevetel2">Tükröket megfelelően használja</string>
+    <string name="pozitiv_eszrevetel3">Menetdinamika jó</string>
+    <string name="pozitiv_eszrevetel4">Menet/fék vezérlés jó</string>
+    <string name="pozitiv_eszrevetel5">Utasokkal udvarias</string>
+    <string name="pozitiv_eszrevetel6">Preventív vezetés</string>
+    <string name="pozitiv_eszrevetel7">Ajtókezelési rendet betartja</string>
+    <string name="pozitiv_eszrevetel8">Forgalmat átlátja</string>
+    <string name="pozitiv_eszrevetel9">Kollégáival előzékeny, segítőkész</string>
+    <string name="pozitiv_eszrevetel10">Menetrendet betartja</string>
+
+    <!-- Negatív észrevételek -->
+    <string name="negativ_eszrevetel1">Nem ismeri a lámpaprogramot</string>
+    <string name="negativ_eszrevetel2">A tükröket nem használja kellően</string>
+    <string name="negativ_eszrevetel3">Menetdinamika nem megfelelő</string>
+    <string name="negativ_eszrevetel4">Menet/fék vezérlés kaotikus</string>
+    <string name="negativ_eszrevetel5">Utasokkal goromba</string>
+    <string name="negativ_eszrevetel6">Nem kellően preventív a vezetési stílusa</string>
+    <string name="negativ_eszrevetel7">Ajtókezelési rendet nem tartja</string>
+    <string name="negativ_eszrevetel8">A forgalomban bizonytalan</string>
+    <string name="negativ_eszrevetel9">Kollégáival nem előzékeny, segítőkész</string>
+    <string name="negativ_eszrevetel10">Menetrendet nem képes tartani</string>
+
+</resources>
