@@ -154,7 +154,7 @@ class FormActivity : AppCompatActivity() {
             val positives = selectedPositive.toList()
             val negatives = selectedNegative.toList()
 
-            val header = "Ellenőrzést végző személy: $inspector"
+            val header = "Ellenőrzést végző személy neve: $inspector"
 
             val bodyText = """
                 Mai napon $date a $line viszonylaton ellenőriztem a $vehicleCode pályaszámú járművel közlekedő $driverName ($driverCode) járművezetőt.
