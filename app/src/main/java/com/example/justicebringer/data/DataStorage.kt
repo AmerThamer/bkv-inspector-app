@@ -2,9 +2,9 @@ package com.example.justicebringer.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.justicebringer.FormActivity.Driver
-import com.example.justicebringer.FormActivity.Route
-import com.example.justicebringer.FormActivity.Inspector
+import com.example.justicebringer.Driver
+import com.example.justicebringer.Route
+import com.example.justicebringer.Inspector
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 

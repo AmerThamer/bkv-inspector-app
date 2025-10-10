@@ -1,14 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-
     <style name="Theme.Justicebringer" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- fő téma, főmenü -->
         <item name="colorPrimary">#DBC921</item>
         <item name="colorSecondary">#DBC921</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <!-- almenük fejléc nélkül -->
-    <style name="Theme.Justicebringer.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- ha kell, ide testreszabás -->
-    </style>
-
+    <style name="Theme.Justicebringer.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>

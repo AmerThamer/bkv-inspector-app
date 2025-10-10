@@ -13,7 +13,6 @@ import android.text.TextWatcher
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.ui.graphics.Color
 import androidx.core.content.FileProvider
 import com.example.justicebringer.data.DataStorage
 import com.example.justicebringer.databinding.ActivityFormBinding
@@ -22,7 +21,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
-
 
 class FormActivity : AppCompatActivity() {
 
@@ -64,10 +62,20 @@ class FormActivity : AppCompatActivity() {
     private val selectedPositive = mutableSetOf<String>()
     private val selectedNegative = mutableSetOf<String>()
 
+
+    private var inspectionType: String = "Vonali"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+
+        binding.toggleTypeGroup.check(R.id.btnVonali)
+        binding.toggleTypeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            inspectionType = if (checkedId == R.id.btnMentori) "Mentori" else "Vonali"
+        }
 
         loadData()
 
@@ -159,20 +167,19 @@ class FormActivity : AppCompatActivity() {
             val bodyText = """
                 Mai napon $date a $line viszonylaton ellenőriztem a $vehicleCode pályaszámú járművel közlekedő $driverName ($driverCode) járművezetőt.
                 A következő szakaszon: $startTime $startLoc - $endTime $endLoc.
-
-                Következő megállapításokat tettem:
             """.trimIndent()
 
-
+            // inspectionType: "Vonali" vagy "Mentori" – később beépítheted a PDF-be
 
             val pdfFile = createPdfWithTwoColumns(header, bodyText, positives, negatives, notes, driverCode)
-
-            val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
-            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(pdfUri, "application/pdf")
-                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            if (pdfFile != null) {
+                val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
+                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(pdfUri, "application/pdf")
+                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                startActivity(Intent.createChooser(viewIntent, "PDF megnyitása"))
             }
-            startActivity(Intent.createChooser(viewIntent, "PDF megnyitása"))
         }
     }
 
@@ -190,17 +197,15 @@ class FormActivity : AppCompatActivity() {
                 if (selfChange) return
                 val raw = s?.toString() ?: ""
                 val digits = raw.replace("[^\\d]".toRegex(), "")
-                if (digits.isEmpty()) {
-                    return
-                }
+                if (digits.isEmpty()) return
+
                 val limited = if (digits.length > 4) digits.substring(0, 4) else digits
-                val hStr = when {
-                    limited.length >= 2 -> limited.substring(0, 2)
-                    else -> limited
-                }
+                val hStr = if (limited.length >= 2) limited.substring(0, 2) else limited
                 val mStr = if (limited.length > 2) limited.substring(2) else ""
+
                 var h = if (hStr.isNotEmpty()) hStr.toInt() else 0
                 if (h > 23) h = 23
+
                 var out = if (hStr.length >= 2) String.format("%02d", h) else hStr
                 if (out.length >= 2) {
                     out += ":"
@@ -231,10 +236,7 @@ class FormActivity : AppCompatActivity() {
     private fun normalizeTime(input: String): String {
         val digits = input.replace("[^\\d]".toRegex(), "")
         if (digits.isEmpty()) return ""
-        val hh = when {
-            digits.length >= 2 -> digits.substring(0, 2).toInt()
-            else -> digits.substring(0, 1).toInt()
-        }.coerceIn(0, 23)
+        val hh = (if (digits.length >= 2) digits.substring(0, 2) else digits.substring(0, 1)).toInt().coerceIn(0, 23)
         val mm = when {
             digits.length >= 4 -> digits.substring(2, 4).toInt()
             digits.length == 3 -> digits.substring(2, 3).toInt()
@@ -300,45 +302,30 @@ class FormActivity : AppCompatActivity() {
         val canvas = page.canvas
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 14f
-
         }
 
-        // --- Margók, oszlopok, sortávok ---
         val marginX = 40f
         val lineStep = 22f
-        val colLeftX = marginX               // bal hasáb x
-        val colRightX = marginX + 250f       // jobb hasáb x (igény szerint módosítható)
+        val colLeftX = marginX
+        val colRightX = marginX + 250f
         val contentMaxWidth = pageWidth - 2 * marginX
 
-        // --- FEJLÉC KÉP (fejlec.png) ---
-        var yPos = 0f // felső induló y
+        var yPos = 0f
         try {
             val original = BitmapFactory.decodeResource(resources, R.drawable.fejlecpdf)
             if (original != null) {
-                // Célszélesség: teljes tartalomszélesség
                 val targetW = contentMaxWidth.toInt()
-                // Aránytartó magasság
                 val scale = targetW.toFloat() / original.width.toFloat()
-                val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt()) // max ~25% lapmagasság
-
+                val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt())
                 val scaled = Bitmap.createScaledBitmap(original, targetW, targetH, true)
-
-                // Középre igazítva a tartományon belül
                 val imgX = marginX + (contentMaxWidth - scaled.width) / 2f
                 canvas.drawBitmap(scaled, imgX, yPos, null)
-
-                yPos += scaled.height + 18f  // kis térköz a kép után
-
-                // Memóriaszivárgás elkerülése
+                yPos += scaled.height + 18f
                 if (scaled != original) scaled.recycle()
                 original.recycle()
             }
-        } catch (_: Exception) {
-            // Ha nincs kép, egyszerűen kihagyjuk – a PDF akkor is elkészül
-        }
+        } catch (_: Exception) {}
 
-        // --- FEJLÉC SZÖVEG ---
-        // Ha több soros header jöhet, tördeljük kényelmesen:
         val headerLines = header.split("\n")
         for (line in headerLines) {
             canvas.drawText(line, marginX, yPos, paint)
@@ -346,7 +333,6 @@ class FormActivity : AppCompatActivity() {
         }
         yPos += 6f
 
-        // --- TÖRZSSZÖVEG (body) – egyszerű soronkénti kiírás ---
         val bodyLines = bodyText.split("\n")
         for (line in bodyLines) {
             canvas.drawText(line, marginX, yPos, paint)
@@ -355,24 +341,20 @@ class FormActivity : AppCompatActivity() {
 
         yPos += 16f
 
-        // --- CÍMSOROK A KÉT HASÁBHOZ ---
         paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
         canvas.drawText("Pozitív észrevételek", colLeftX, yPos, paint)
         canvas.drawText("Negatív észrevételek", colRightX, yPos, paint)
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         yPos += lineStep
 
-        // --- Két hasábba tördelés ---
         val maxCount = maxOf(positives.size, negatives.size)
         for (i in 0 until maxCount) {
             positives.getOrNull(i)?.let {
-                paint.color = android.graphics.Color.parseColor("#009600") // sötétzöld
-                    canvas.drawText("- $it", colLeftX, yPos, paint)
+                paint.color = android.graphics.Color.parseColor("#009600")
+                canvas.drawText("- $it", colLeftX, yPos, paint)
             }
-
-            // --- Negatívak: piros ---
             negatives.getOrNull(i)?.let {
-                paint.color = android.graphics.Color.parseColor("#B40000") // sötétpiros, ne égjen retina :D
+                paint.color = android.graphics.Color.parseColor("#B40000")
                 canvas.drawText("- $it", colRightX, yPos, paint)
             }
             yPos += lineStep
@@ -381,26 +363,22 @@ class FormActivity : AppCompatActivity() {
 
         yPos += 18f
 
-        // --- MEGJEGYZÉS BLOKK ---
         paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
         canvas.drawText("Megjegyzés:", marginX, yPos, paint)
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         yPos += lineStep
 
-        // Ha a megjegyzés hosszú, egyszerű tördelés (durva wrap) a tartalomszélességre
         val noteWrapped = wrapText(notes, paint, contentMaxWidth)
         for (ln in noteWrapped) {
-            if (yPos > pageHeight - marginX) break // primitív lapvédelem, (2. oldalhoz külön logika kellene)
+            if (yPos > pageHeight - marginX) break
             canvas.drawText(ln, marginX, yPos, paint)
             yPos += lineStep
         }
 
-        // --- ZÁRÁS ÉS MENTÉS ---
         doc.finishPage(page)
 
         val outDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Ellenőrzések").apply { mkdirs() }
-        val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-            .format(Date()) + ".pdf"
+        val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) + ".pdf"
         val outFile = File(outDir, fileName)
 
         return try {
@@ -413,9 +391,6 @@ class FormActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Egyszerű szövegtördelő: a Paint mérése alapján a megadott szélességre tördel.
-     */
     private fun wrapText(text: String, paint: Paint, maxWidthPx: Float): List<String> {
         if (text.isBlank()) return emptyList()
         val words = text.trim().split(Regex("\\s+"))
@@ -432,7 +407,6 @@ class FormActivity : AppCompatActivity() {
                 if (paint.measureText(w) <= maxWidthPx) {
                     sb.append(w)
                 } else {
-                    // nagyon hosszú "szó" (pl. kód) – vágjuk darabokra
                     var rest = w
                     while (rest.isNotEmpty()) {
                         var cut = rest.length
@@ -446,10 +420,4 @@ class FormActivity : AppCompatActivity() {
         if (sb.isNotEmpty()) lines.add(sb.toString())
         return lines
     }
-
-
-data class Driver(val name: String, val code: String)
-data class Route(val line: String, val location: String)
-data class Inspector(val name: String, val code: String)
 }
-

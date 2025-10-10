@@ -64,9 +64,10 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.btnUpload.setOnClickListener {
-            val drivers = mutableListOf<FormActivity.Driver>()
-            val routes = mutableListOf<FormActivity.Route>()
-            val inspectors = mutableListOf<FormActivity.Inspector>()
+            // TOP-LEVEL modellek használata
+            val drivers = mutableListOf<Driver>()
+            val routes = mutableListOf<Route>()
+            val inspectors = mutableListOf<Inspector>()
 
             // járművezetők
             prefs.getDriverFile()?.let { uriString ->
@@ -76,7 +77,7 @@ class SettingsActivity : AppCompatActivity() {
                     if (parts.size >= 2) {
                         val name = parts[0].trim()
                         val code = parts.subList(1, parts.size).joinToString(",").trim()
-                        drivers.add(FormActivity.Driver(name, code))
+                        drivers.add(Driver(name, code))
                     }
                 }
             }
@@ -89,7 +90,7 @@ class SettingsActivity : AppCompatActivity() {
                     if (parts.size >= 2) {
                         val lineNumber = parts[0].trim()
                         val location = parts.subList(1, parts.size).joinToString(",").trim()
-                        routes.add(FormActivity.Route(lineNumber, location))
+                        routes.add(Route(lineNumber, location))
                     }
                 }
             }
@@ -102,7 +103,7 @@ class SettingsActivity : AppCompatActivity() {
                     if (parts.size >= 2) {
                         val name = parts[0].trim()
                         val code = parts[1].trim()
-                        inspectors.add(FormActivity.Inspector(name, code))
+                        inspectors.add(Inspector(name, code))
                     }
                 }
             }
@@ -133,7 +134,8 @@ class SettingsActivity : AppCompatActivity() {
     private fun takePersistable(uri: Uri) {
         try {
             contentResolver.takePersistableUriPermission(
-                uri, FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                uri,
+                FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
         } catch (_: Exception) { }
     }
