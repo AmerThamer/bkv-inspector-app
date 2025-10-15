@@ -146,7 +146,11 @@ class FormActivity : AppCompatActivity() {
         setupMultiSelect(binding.txtNegative, negativeItems, selectedNegative)
 
         binding.btnGeneratePdf.setOnClickListener {
-            val inspector = binding.autoInspector.text.toString()
+            val inspectorRaw = binding.autoInspector.text.toString()
+// Név és kód kinyerése pl. "Név (KÓD)" formátumból:
+            val match = Regex("""^\s*(.*?)\s*\(([^)]+)\)\s*$""").find(inspectorRaw)
+            val inspector = match?.groupValues?.get(1) ?: inspectorRaw
+            val inspectorCode = match?.groupValues?.get(2) ?: ""
             val driverName = binding.autoDriverName.text.toString()
             val driverCode = binding.autoDriverCode.text.toString()
             val line = binding.autoLine.text.toString()
@@ -162,23 +166,35 @@ class FormActivity : AppCompatActivity() {
             val positives = selectedPositive.toList()
             val negatives = selectedNegative.toList()
 
-            val header = "Ellenőrzést végző személy neve: $inspector"
+            val header = "Jelentés mentori ellenőrzésről"
 
             val bodyText = """
-                Mai napon $date a $line viszonylaton ellenőriztem a $vehicleCode pályaszámú járművel közlekedő $driverName ($driverCode) járművezetőt.
-                A következő szakaszon: $startTime $startLoc - $endTime $endLoc.
+                Az ellenőrzés helye: $startLoc -> $endLoc
+                Az ellenőrzés ideje: $date  $startTime ->$endTime
+                Az ellenőrzést végezte: $inspector
+                Az ellenőrzési igazolvány szám: $inspectorCode
+                Az ellenőrzés tárgya: Vonali ellenőrzés
+               
+
+                Ellenőrzés adatai:
+
+                Járművezető neve: $driverName ($driverCode) Viszonylat: $line Pályaszám: $vehicleCode
+                Ellenőrzés kezdete: $startLoc $startTime
+                Ellenőrzés vége: $endLoc $endTime
+
+                Következő megállapításokat tettem:
             """.trimIndent()
 
             // inspectionType: "Vonali" vagy "Mentori" – később beépítheted a PDF-be
 
             val pdfFile = createPdfWithTwoColumns(header, bodyText, positives, negatives, notes, driverCode)
-            if (pdfFile != null) {
-                val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
-                val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(pdfUri, "application/pdf")
-                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                }
-                startActivity(Intent.createChooser(viewIntent, "PDF megnyitása"))
+
+            val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
+            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(pdfUri, "application/pdf")
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            startActivity(Intent.createChooser(viewIntent, "PDF megnyitása"))
             }
         }
     }
@@ -262,6 +278,7 @@ class FormActivity : AppCompatActivity() {
     }
 
     private fun updateLocationsForLine(line: String) {
+        val routes = null
         val filteredLocations = routes.filter { it.line.trim() == line }
             .map { it.location.trim() }
             .distinct()
@@ -283,141 +300,193 @@ class FormActivity : AppCompatActivity() {
         inspectors.addAll(storage.loadInspectors())
     }
 
-    private fun createPdfWithTwoColumns(
-        header: String,
-        bodyText: String,
-        positives: List<String>,
-        negatives: List<String>,
-        notes: String,
-        driverCode: String
-    ): File? {
-        val doc = PdfDocument()
+private fun createPdfWithTwoColumns(
+    header: String,
+    bodyText: String,
+    positives: List<String>,
+    negatives: List<String>,
+    notes: String,
+    driverCode: String
+): File? {
+    val doc = PdfDocument()
 
-        // A4 portrait @72dpi
-        val pageWidth = 595
-        val pageHeight = 842
-        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
-        val page = doc.startPage(pageInfo)
+    // A4 portrait @72dpi
+    val pageWidth = 595
+    val pageHeight = 842
+    val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+    val page = doc.startPage(pageInfo)
 
-        val canvas = page.canvas
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 14f
-        }
+    val canvas = page.canvas
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 12f
 
-        val marginX = 40f
-        val lineStep = 22f
-        val colLeftX = marginX
-        val colRightX = marginX + 250f
-        val contentMaxWidth = pageWidth - 2 * marginX
-
-        var yPos = 0f
-        try {
-            val original = BitmapFactory.decodeResource(resources, R.drawable.fejlecpdf)
-            if (original != null) {
-                val targetW = contentMaxWidth.toInt()
-                val scale = targetW.toFloat() / original.width.toFloat()
-                val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt())
-                val scaled = Bitmap.createScaledBitmap(original, targetW, targetH, true)
-                val imgX = marginX + (contentMaxWidth - scaled.width) / 2f
-                canvas.drawBitmap(scaled, imgX, yPos, null)
-                yPos += scaled.height + 18f
-                if (scaled != original) scaled.recycle()
-                original.recycle()
-            }
-        } catch (_: Exception) {}
-
-        val headerLines = header.split("\n")
-        for (line in headerLines) {
-            canvas.drawText(line, marginX, yPos, paint)
-            yPos += lineStep + 6f
-        }
-        yPos += 6f
-
-        val bodyLines = bodyText.split("\n")
-        for (line in bodyLines) {
-            canvas.drawText(line, marginX, yPos, paint)
-            yPos += lineStep
-        }
-
-        yPos += 16f
-
-        paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
-        canvas.drawText("Pozitív észrevételek", colLeftX, yPos, paint)
-        canvas.drawText("Negatív észrevételek", colRightX, yPos, paint)
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        yPos += lineStep
-
-        val maxCount = maxOf(positives.size, negatives.size)
-        for (i in 0 until maxCount) {
-            positives.getOrNull(i)?.let {
-                paint.color = android.graphics.Color.parseColor("#009600")
-                canvas.drawText("- $it", colLeftX, yPos, paint)
-            }
-            negatives.getOrNull(i)?.let {
-                paint.color = android.graphics.Color.parseColor("#B40000")
-                canvas.drawText("- $it", colRightX, yPos, paint)
-            }
-            yPos += lineStep
-        }
-        paint.setARGB(255, 0, 0, 0)
-
-        yPos += 18f
-
-        paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
-        canvas.drawText("Megjegyzés:", marginX, yPos, paint)
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        yPos += lineStep
-
-        val noteWrapped = wrapText(notes, paint, contentMaxWidth)
-        for (ln in noteWrapped) {
-            if (yPos > pageHeight - marginX) break
-            canvas.drawText(ln, marginX, yPos, paint)
-            yPos += lineStep
-        }
-
-        doc.finishPage(page)
-
-        val outDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Ellenőrzések").apply { mkdirs() }
-        val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) + ".pdf"
-        val outFile = File(outDir, fileName)
-
-        return try {
-            FileOutputStream(outFile).use { doc.writeTo(it) }
-            doc.close()
-            outFile
-        } catch (e: Exception) {
-            doc.close()
-            null
-        }
     }
 
-    private fun wrapText(text: String, paint: Paint, maxWidthPx: Float): List<String> {
-        if (text.isBlank()) return emptyList()
-        val words = text.trim().split(Regex("\\s+"))
-        val lines = mutableListOf<String>()
-        val sb = StringBuilder()
+    // --- Margók, oszlopok, sortávok ---
+    val marginX = 40f
+    val lineStep = 22f
+    val colLeftX = marginX               // bal hasáb x
+    val colRightX = marginX + 250f       // jobb hasáb x (igény szerint módosítható)
+    val contentMaxWidth = pageWidth - 2 * marginX
 
-        for (w in words) {
-            val probe = if (sb.isEmpty()) w else sb.toString() + " " + w
-            if (paint.measureText(probe) <= maxWidthPx) {
-                if (sb.isEmpty()) sb.append(w) else sb.append(' ').append(w)
+    // --- FEJLÉC KÉP (fejlec.png) ---
+    var yPos = 0f // felső induló y
+    try {
+        val original = BitmapFactory.decodeResource(resources, R.drawable.fejlecpdf)
+        if (original != null) {
+            // Célszélesség: teljes tartalomszélesség
+            val targetW = contentMaxWidth.toInt()
+            // Aránytartó magasság
+            val scale = targetW.toFloat() / original.width.toFloat()
+            val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt()) // max ~25% lapmagasság
+
+            val scaled = Bitmap.createScaledBitmap(original, targetW, targetH, true)
+
+            // Középre igazítva a tartományon belül
+            val imgX = marginX + (contentMaxWidth - scaled.width) / 2f
+            canvas.drawBitmap(scaled, imgX, yPos, null)
+
+            yPos += scaled.height + 18f  // kis térköz a kép után
+
+            // Memóriaszivárgás elkerülése
+            if (scaled != original) scaled.recycle()
+            original.recycle()
+        }
+    } catch (_: Exception) {
+        // Ha nincs kép, egyszerűen kihagyjuk – a PDF akkor is elkészül
+    }
+
+    // --- FEJLÉC SZÖVEG ---
+    // Ha több soros header jöhet, tördeljük kényelmesen:
+    yPos += 12f
+    val headerPaint = Paint().apply {
+        color = android.graphics.Color.parseColor("#000000")
+        textSize = 20f
+        typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+        textAlign = Paint.Align.CENTER
+    }
+
+// Fejléc kirajzolása
+    canvas.drawText(header, pageWidth / 2f, 80f, headerPaint)
+    yPos += 30f
+
+
+    // --- TÖRZSSZÖVEG (body) – egyszerű soronkénti kiírás ---
+    val bodyLines = bodyText.split("\n")
+    for (line in bodyLines) {
+        canvas.drawText(line, marginX, yPos, paint)
+        yPos += lineStep
+    }
+
+    yPos += 16f
+
+    // --- CÍMSOROK A KÉT HASÁBHOZ ---
+    paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+    canvas.drawText("Pozitív észrevételek", colLeftX, yPos, paint)
+    canvas.drawText("Negatív észrevételek", colRightX, yPos, paint)
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    yPos += lineStep
+
+    // --- Két hasábba tördelés ---
+    val maxCount = maxOf(positives.size, negatives.size)
+    for (i in 0 until maxCount) {
+        positives.getOrNull(i)?.let {
+            paint.color = android.graphics.Color.parseColor("#009600") // sötétzöld
+            canvas.drawText("- $it", colLeftX, yPos, paint)
+        }
+
+        // --- Negatívak: piros ---
+        negatives.getOrNull(i)?.let {
+            paint.color = android.graphics.Color.parseColor("#B40000") // sötétpiros, ne égjen retina :D
+            canvas.drawText("- $it", colRightX, yPos, paint)
+        }
+        yPos += lineStep
+    }
+    paint.setARGB(255, 0, 0, 0)
+
+    yPos += 18f
+
+    // --- MEGJEGYZÉS BLOKK ---
+    paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+    canvas.drawText("Megjegyzés:", marginX, yPos, paint)
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+    yPos += lineStep
+
+    // Ha a megjegyzés hosszú, egyszerű tördelés (durva wrap) a tartalomszélességre
+    val noteWrapped = wrapText(notes, paint, contentMaxWidth)
+    for (ln in noteWrapped) {
+        if (yPos > pageHeight - marginX) break // primitív lapvédelem, (2. oldalhoz külön logika kellene)
+        canvas.drawText(ln, marginX, yPos, paint)
+        yPos += lineStep
+    }
+// --- Jegyzőkönyv lezárása rész ---
+    val closingPaint = Paint().apply {
+        color = android.graphics.Color.parseColor("#000000")
+        textSize = 12f
+        typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
+    }
+
+// Aktuális dátum + idő
+    val now = SimpleDateFormat("yyyy.MM.dd. HH:mm", Locale.getDefault()).format(Date())
+
+// Kiírás a PDF aljára (pl. 60 px margóval a lap aljától)
+    val closingText = "Az ellenőrzési jegyzőkönyvet lezártam: $now"
+
+    canvas.drawText(closingText, 40f, 780f, closingPaint)
+    // --- ZÁRÁS ÉS MENTÉS ---
+    doc.finishPage(page)
+
+    val outDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Ellenőrzések").apply { mkdirs() }
+    val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+        .format(Date()) + ".pdf"
+    val outFile = File(outDir, fileName)
+
+    return try {
+        FileOutputStream(outFile).use { doc.writeTo(it) }
+        doc.close()
+        outFile
+    } catch (e: Exception) {
+        doc.close()
+        null
+    }
+}
+
+/**
+ * Egyszerű szövegtördelő: a Paint mérése alapján a megadott szélességre tördel.
+ */
+private fun wrapText(text: String, paint: Paint, maxWidthPx: Float): List<String> {
+    if (text.isBlank()) return emptyList()
+    val words = text.trim().split(Regex("\\s+"))
+    val lines = mutableListOf<String>()
+    val sb = StringBuilder()
+
+    for (w in words) {
+        val probe = if (sb.isEmpty()) w else sb.toString() + " " + w
+        if (paint.measureText(probe) <= maxWidthPx) {
+            if (sb.isEmpty()) sb.append(w) else sb.append(' ').append(w)
+        } else {
+            if (sb.isNotEmpty()) lines.add(sb.toString())
+            sb.clear()
+            if (paint.measureText(w) <= maxWidthPx) {
+                sb.append(w)
             } else {
-                if (sb.isNotEmpty()) lines.add(sb.toString())
-                sb.clear()
-                if (paint.measureText(w) <= maxWidthPx) {
-                    sb.append(w)
-                } else {
-                    var rest = w
-                    while (rest.isNotEmpty()) {
-                        var cut = rest.length
-                        while (cut > 1 && paint.measureText(rest.substring(0, cut)) > maxWidthPx) cut--
-                        lines.add(rest.substring(0, cut))
-                        rest = rest.substring(cut)
-                    }
+                // nagyon hosszú "szó" (pl. kód) – vágjuk darabokra
+                var rest = w
+                while (rest.isNotEmpty()) {
+                    var cut = rest.length
+                    while (cut > 1 && paint.measureText(rest.substring(0, cut)) > maxWidthPx) cut--
+                    lines.add(rest.substring(0, cut))
+                    rest = rest.substring(cut)
                 }
             }
         }
-        if (sb.isNotEmpty()) lines.add(sb.toString())
-        return lines
     }
+    if (sb.isNotEmpty()) lines.add(sb.toString())
+    return lines
+}
+
+
+data class Driver(val name: String, val code: String)
+data class Route(val line: String, val location: String)
+data class Inspector(val name: String, val code: String)
 }

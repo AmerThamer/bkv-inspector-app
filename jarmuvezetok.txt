@@ -1,5 +1,0 @@
-Maga Zoltan,C0000
-Teszt Elek,A3123
-Csicska Répa,B4122
-Vég Béla,A1233
-Kalóz-Kapitány Karcsi,1423
