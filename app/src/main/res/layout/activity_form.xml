@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Ellenőrző személy -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -25,7 +25,7 @@
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="10dp">
+            android:layout_marginBottom="16dp"> <!-- NÖVELVE (eredetileg 10dp) -->
 
             <AutoCompleteTextView
                 android:id="@+id/autoInspector"
@@ -42,21 +42,26 @@
                 android:layout_width="100dp"
                 android:layout_height="48dp"
                 android:layout_marginStart="8dp"
-                android:gravity="center"
-                android:textColor="?attr/colorOnSurface"
                 android:background="@drawable/box_background"
-                android:format24Hour="HH:mm"
                 android:format12Hour="HH:mm"
-                android:timeZone="Europe/Budapest" />
+                android:format24Hour="HH:mm"
+                android:gravity="center"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false"
+                android:textColor="?attr/colorOnSurface"
+                android:timeZone="Europe/Budapest">
+
+            </TextClock>
         </LinearLayout>
 
-        <!-- Ellenőrzés adatai + szegmens kapcsoló -->
+
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="4dp"> <!-- 8dp → 4dp (már van nagy bottom margin fent) -->
 
             <TextView
                 android:layout_width="0dp"
@@ -115,7 +120,7 @@
             </com.google.android.material.button.MaterialButtonToggleGroup>
         </LinearLayout>
 
-        <!-- Viszonylat / Pályaszám -->
+
         <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
@@ -167,7 +172,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Ellenőrzött személy -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -202,7 +207,7 @@
                 android:inputType="text" />
         </LinearLayout>
 
-        <!-- Kezdete hely, idő -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -237,7 +242,7 @@
                 android:background="@drawable/box_background" />
         </LinearLayout>
 
-        <!-- Vége hely, idő -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -272,7 +277,7 @@
                 android:background="@drawable/box_background" />
         </LinearLayout>
 
-        <!-- Pozitív -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -290,7 +295,7 @@
             android:text="Válassz..."
             android:textColor="?attr/colorOnSurface" />
 
-        <!-- Negatív -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -308,7 +313,7 @@
             android:text="Válassz..."
             android:textColor="?attr/colorOnSurface" />
 
-        <!-- Megjegyzés -->
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -325,7 +330,7 @@
             android:gravity="top|start"
             android:inputType="textMultiLine" />
 
-        <!-- Gomb -->
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGeneratePdf"
             android:layout_width="wrap_content"

@@ -61,15 +61,12 @@ class FormActivity : AppCompatActivity() {
 
     private val selectedPositive = mutableSetOf<String>()
     private val selectedNegative = mutableSetOf<String>()
-
-
     private var inspectionType: String = "Vonali"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFormBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
 
         binding.toggleTypeGroup.check(R.id.btnVonali)
         binding.toggleTypeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
@@ -128,14 +125,13 @@ class FormActivity : AppCompatActivity() {
         binding.autoLine.setAdapter(lineAdapter)
 
         binding.autoLine.setOnItemClickListener { _, _, position, _ ->
-            val selectedLine = allLines[position].trim()
-            updateLocationsForLine(selectedLine)
+            updateLocationsForLine(allLines[position].trim())
         }
 
         binding.autoLine.setOnFocusChangeListener { _, hasFocus ->
             if (!hasFocus) {
-                val typedLine = binding.autoLine.text.toString().trim()
-                if (typedLine.isNotEmpty()) updateLocationsForLine(typedLine)
+                val typed = binding.autoLine.text.toString().trim()
+                if (typed.isNotEmpty()) updateLocationsForLine(typed)
             }
         }
 
@@ -147,10 +143,10 @@ class FormActivity : AppCompatActivity() {
 
         binding.btnGeneratePdf.setOnClickListener {
             val inspectorRaw = binding.autoInspector.text.toString()
-// Név és kód kinyerése pl. "Név (KÓD)" formátumból:
             val match = Regex("""^\s*(.*?)\s*\(([^)]+)\)\s*$""").find(inspectorRaw)
             val inspector = match?.groupValues?.get(1) ?: inspectorRaw
             val inspectorCode = match?.groupValues?.get(2) ?: ""
+
             val driverName = binding.autoDriverName.text.toString()
             val driverCode = binding.autoDriverCode.text.toString()
             val line = binding.autoLine.text.toString()
@@ -160,22 +156,24 @@ class FormActivity : AppCompatActivity() {
             val endLoc = binding.autoEndLocation.text.toString()
             val endTime = normalizeTime(binding.editEndTime.text.toString())
             val notes = binding.editNotes.text.toString()
-
             val date = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date())
 
             val positives = selectedPositive.toList()
             val negatives = selectedNegative.toList()
 
-            val header = "Jelentés mentori ellenőrzésről"
+            val (header, targy) =
+                if (inspectionType == "Vonali")
+                    "Jelentés vonali ellenőrzésről" to "Vonali ellenőrzés"
+                else
+                    "Jelentés mentori ellenőrzésről" to "Mentori ellenőrzés"
 
             val bodyText = """
                 Az ellenőrzés helye: $startLoc -> $endLoc
                 Az ellenőrzés ideje: $date  $startTime ->$endTime
                 Az ellenőrzést végezte: $inspector
                 Az ellenőrzési igazolvány szám: $inspectorCode
-                Az ellenőrzés tárgya: Vonali ellenőrzés
+                Az ellenőrzés tárgya: $targy
                
-
                 Ellenőrzés adatai:
 
                 Járművezető neve: $driverName ($driverCode) Viszonylat: $line Pályaszám: $vehicleCode
@@ -185,92 +183,92 @@ class FormActivity : AppCompatActivity() {
                 Következő megállapításokat tettem:
             """.trimIndent()
 
-            // inspectionType: "Vonali" vagy "Mentori" – később beépítheted a PDF-be
-
             val pdfFile = createPdfWithTwoColumns(header, bodyText, positives, negatives, notes, driverCode)
 
-            val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
-            val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(pdfUri, "application/pdf")
-                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-            startActivity(Intent.createChooser(viewIntent, "PDF megnyitása"))
+            if (pdfFile != null) {
+                val pdfUri = FileProvider.getUriForFile(this, "${packageName}.provider", pdfFile)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(pdfUri, "application/pdf")
+                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                }
+                startActivity(Intent.createChooser(intent, "PDF megnyitása"))
             }
         }
     }
 
     private fun setupTimeField(editText: android.widget.EditText) {
         editText.addTextChangedListener(object : TextWatcher {
-            var selfChange = false
+            var self = false
             var prev = ""
             var prevSel = 0
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 prev = s?.toString() ?: ""
                 prevSel = start + after
             }
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                if (selfChange) return
-                val raw = s?.toString() ?: ""
-                val digits = raw.replace("[^\\d]".toRegex(), "")
-                if (digits.isEmpty()) return
 
-                val limited = if (digits.length > 4) digits.substring(0, 4) else digits
-                val hStr = if (limited.length >= 2) limited.substring(0, 2) else limited
-                val mStr = if (limited.length > 2) limited.substring(2) else ""
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                if (self) return
+                val raw = s?.toString() ?: ""
+                val d = raw.replace("[^\\d]".toRegex(), "")
+                if (d.isEmpty()) return
+
+                val lim = if (d.length > 4) d.substring(0, 4) else d
+                val hStr = if (lim.length >= 2) lim.substring(0, 2) else lim
+                val mStr = if (lim.length > 2) lim.substring(2) else ""
 
                 var h = if (hStr.isNotEmpty()) hStr.toInt() else 0
                 if (h > 23) h = 23
 
-                var out = if (hStr.length >= 2) String.format("%02d", h) else hStr
+                var out = if (hStr.length >= 2) "%02d".format(h) else hStr
                 if (out.length >= 2) {
                     out += ":"
                     if (mStr.isNotEmpty()) {
                         if (mStr.length >= 2) {
                             var m = mStr.substring(0, 2).toInt()
                             if (m > 59) m = 59
-                            out += String.format("%02d", m)
-                        } else {
-                            out += mStr
-                        }
+                            out += "%02d".format(m)
+                        } else out += mStr
                     }
                 }
+
                 if (out == raw) return
-                selfChange = true
-                val newSel = when {
-                    out.length > raw.length && out.length == 3 && raw.length == 2 -> 3
-                    prev.length > raw.length && prevSel == 3 && raw.length == 2 -> 1
-                    else -> out.length
-                }
+                self = true
+                val newSel =
+                    if (out.length > raw.length && out.length == 3 && raw.length == 2) 3
+                    else if (prev.length > raw.length && prevSel == 3 && raw.length == 2) 1
+                    else out.length
+
                 editText.setText(out)
                 editText.setSelection(newSel.coerceAtMost(out.length))
-                selfChange = false
+                self = false
             }
         })
     }
 
     private fun normalizeTime(input: String): String {
-        val digits = input.replace("[^\\d]".toRegex(), "")
-        if (digits.isEmpty()) return ""
-        val hh = (if (digits.length >= 2) digits.substring(0, 2) else digits.substring(0, 1)).toInt().coerceIn(0, 23)
-        val mm = when {
-            digits.length >= 4 -> digits.substring(2, 4).toInt()
-            digits.length == 3 -> digits.substring(2, 3).toInt()
-            else -> 0
-        }.coerceIn(0, 59)
-        return String.format("%02d:%02d", hh, mm)
+        val d = input.replace("[^\\d]".toRegex(), "")
+        if (d.isEmpty()) return ""
+        val hh = (if (d.length >= 2) d.substring(0, 2) else d.substring(0, 1)).toInt().coerceIn(0, 23)
+        val mm =
+            if (d.length >= 4) d.substring(2, 4).toInt().coerceIn(0, 59)
+            else if (d.length == 3) d.substring(2, 3).toInt().coerceIn(0, 59)
+            else 0
+        return "%02d:%02d".format(hh, mm)
     }
 
-    private fun setupMultiSelect(textView: TextView, items: List<String>, selectedItems: MutableSet<String>) {
+    private fun setupMultiSelect(textView: TextView, items: List<String>, selected: MutableSet<String>) {
         textView.setOnClickListener {
-            val checked = BooleanArray(items.size) { selectedItems.contains(items[it]) }
+            val checked = BooleanArray(items.size) { selected.contains(items[it]) }
             MaterialAlertDialogBuilder(this)
                 .setTitle("Válassz elemeket")
                 .setMultiChoiceItems(items.toTypedArray(), checked) { _, which, isChecked ->
-                    if (isChecked) selectedItems.add(items[which]) else selectedItems.remove(items[which])
+                    if (isChecked) selected.add(items[which]) else selected.remove(items[which])
                 }
                 .setPositiveButton("OK") { _, _ ->
-                    textView.text = if (selectedItems.isNotEmpty()) selectedItems.joinToString(", ") else "Válassz..."
+                    textView.text = if (selected.isNotEmpty()) selected.joinToString(", ") else "Válassz..."
                 }
                 .setNegativeButton("Mégse", null)
                 .show()
@@ -278,14 +276,10 @@ class FormActivity : AppCompatActivity() {
     }
 
     private fun updateLocationsForLine(line: String) {
-        val routes = null
-        val filteredLocations = routes.filter { it.line.trim() == line }
-            .map { it.location.trim() }
-            .distinct()
-            .sorted()
-        val locationAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filteredLocations)
-        binding.autoStartLocation.setAdapter(locationAdapter)
-        binding.autoEndLocation.setAdapter(locationAdapter)
+        val filtered = routes.filter { it.line.trim() == line }.map { it.location.trim() }.distinct().sorted()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, filtered)
+        binding.autoStartLocation.setAdapter(adapter)
+        binding.autoEndLocation.setAdapter(adapter)
         binding.autoStartLocation.text.clear()
         binding.autoEndLocation.text.clear()
     }
@@ -300,193 +294,155 @@ class FormActivity : AppCompatActivity() {
         inspectors.addAll(storage.loadInspectors())
     }
 
-private fun createPdfWithTwoColumns(
-    header: String,
-    bodyText: String,
-    positives: List<String>,
-    negatives: List<String>,
-    notes: String,
-    driverCode: String
-): File? {
-    val doc = PdfDocument()
+    private fun createPdfWithTwoColumns(
+        header: String,
+        bodyText: String,
+        positives: List<String>,
+        negatives: List<String>,
+        notes: String,
+        driverCode: String
+    ): File? {
 
-    // A4 portrait @72dpi
-    val pageWidth = 595
-    val pageHeight = 842
-    val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
-    val page = doc.startPage(pageInfo)
+        val doc = PdfDocument()
+        val pageWidth = 595
+        val pageHeight = 842
+        val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, 1).create()
+        val page = doc.startPage(pageInfo)
 
-    val canvas = page.canvas
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 12f
+        val canvas = page.canvas
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 12f }
 
-    }
+        val marginX = 40f
+        val lineStep = 22f
+        val colLeftX = marginX
+        val colRightX = marginX + 250f
+        val contentMaxWidth = pageWidth - 2 * marginX
 
-    // --- Margók, oszlopok, sortávok ---
-    val marginX = 40f
-    val lineStep = 22f
-    val colLeftX = marginX               // bal hasáb x
-    val colRightX = marginX + 250f       // jobb hasáb x (igény szerint módosítható)
-    val contentMaxWidth = pageWidth - 2 * marginX
+        var yPos = 0f
 
-    // --- FEJLÉC KÉP (fejlec.png) ---
-    var yPos = 0f // felső induló y
-    try {
-        val original = BitmapFactory.decodeResource(resources, R.drawable.fejlecpdf)
-        if (original != null) {
-            // Célszélesség: teljes tartalomszélesség
-            val targetW = contentMaxWidth.toInt()
-            // Aránytartó magasság
-            val scale = targetW.toFloat() / original.width.toFloat()
-            val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt()) // max ~25% lapmagasság
+        try {
+            val original = BitmapFactory.decodeResource(resources, R.drawable.fejlecpdf)
+            if (original != null) {
+                val targetW = contentMaxWidth.toInt()
+                val scale = targetW.toFloat() / original.width.toFloat()
+                val targetH = (original.height * scale).toInt().coerceAtMost((pageHeight * 0.25f).toInt())
+                val scaled = Bitmap.createScaledBitmap(original, targetW, targetH, true)
 
-            val scaled = Bitmap.createScaledBitmap(original, targetW, targetH, true)
+                val imgX = marginX + (contentMaxWidth - scaled.width) / 2f
+                canvas.drawBitmap(scaled, imgX, yPos, null)
 
-            // Középre igazítva a tartományon belül
-            val imgX = marginX + (contentMaxWidth - scaled.width) / 2f
-            canvas.drawBitmap(scaled, imgX, yPos, null)
+                yPos += scaled.height + 18f
+                if (scaled != original) scaled.recycle()
+                original.recycle()
+            }
+        } catch (_: Exception) {}
 
-            yPos += scaled.height + 18f  // kis térköz a kép után
+        yPos += 12f
 
-            // Memóriaszivárgás elkerülése
-            if (scaled != original) scaled.recycle()
-            original.recycle()
-        }
-    } catch (_: Exception) {
-        // Ha nincs kép, egyszerűen kihagyjuk – a PDF akkor is elkészül
-    }
-
-    // --- FEJLÉC SZÖVEG ---
-    // Ha több soros header jöhet, tördeljük kényelmesen:
-    yPos += 12f
-    val headerPaint = Paint().apply {
-        color = android.graphics.Color.parseColor("#000000")
-        textSize = 20f
-        typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
-        textAlign = Paint.Align.CENTER
-    }
-
-// Fejléc kirajzolása
-    canvas.drawText(header, pageWidth / 2f, 80f, headerPaint)
-    yPos += 30f
-
-
-    // --- TÖRZSSZÖVEG (body) – egyszerű soronkénti kiírás ---
-    val bodyLines = bodyText.split("\n")
-    for (line in bodyLines) {
-        canvas.drawText(line, marginX, yPos, paint)
-        yPos += lineStep
-    }
-
-    yPos += 16f
-
-    // --- CÍMSOROK A KÉT HASÁBHOZ ---
-    paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
-    canvas.drawText("Pozitív észrevételek", colLeftX, yPos, paint)
-    canvas.drawText("Negatív észrevételek", colRightX, yPos, paint)
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    yPos += lineStep
-
-    // --- Két hasábba tördelés ---
-    val maxCount = maxOf(positives.size, negatives.size)
-    for (i in 0 until maxCount) {
-        positives.getOrNull(i)?.let {
-            paint.color = android.graphics.Color.parseColor("#009600") // sötétzöld
-            canvas.drawText("- $it", colLeftX, yPos, paint)
+        val headerPaint = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 20f
+            typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
         }
 
-        // --- Negatívak: piros ---
-        negatives.getOrNull(i)?.let {
-            paint.color = android.graphics.Color.parseColor("#B40000") // sötétpiros, ne égjen retina :D
-            canvas.drawText("- $it", colRightX, yPos, paint)
+        canvas.drawText(header, pageWidth / 2f, 80f, headerPaint)
+        yPos += 30f
+
+        bodyText.split("\n").forEach {
+            canvas.drawText(it, marginX, yPos, paint)
+            yPos += lineStep
         }
+
+        yPos += 16f
+
+        paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        canvas.drawText("Pozitív észrevételek", colLeftX, yPos, paint)
+        canvas.drawText("Negatív észrevételek", colRightX, yPos, paint)
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         yPos += lineStep
-    }
-    paint.setARGB(255, 0, 0, 0)
 
-    yPos += 18f
+        val max = maxOf(positives.size, negatives.size)
+        for (i in 0 until max) {
+            positives.getOrNull(i)?.let {
+                paint.color = android.graphics.Color.parseColor("#009600")
+                canvas.drawText("- $it", colLeftX, yPos, paint)
+            }
+            negatives.getOrNull(i)?.let {
+                paint.color = android.graphics.Color.parseColor("#B40000")
+                canvas.drawText("- $it", colRightX, yPos, paint)
+            }
+            yPos += lineStep
+        }
 
-    // --- MEGJEGYZÉS BLOKK ---
-    paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
-    canvas.drawText("Megjegyzés:", marginX, yPos, paint)
-    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-    yPos += lineStep
+        paint.setARGB(255, 0, 0, 0)
+        yPos += 18f
 
-    // Ha a megjegyzés hosszú, egyszerű tördelés (durva wrap) a tartalomszélességre
-    val noteWrapped = wrapText(notes, paint, contentMaxWidth)
-    for (ln in noteWrapped) {
-        if (yPos > pageHeight - marginX) break // primitív lapvédelem, (2. oldalhoz külön logika kellene)
-        canvas.drawText(ln, marginX, yPos, paint)
+        paint.typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
+        canvas.drawText("Megjegyzés:", marginX, yPos, paint)
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         yPos += lineStep
+
+        val wrapped = wrapText(notes, paint, contentMaxWidth)
+        for (ln in wrapped) {
+            if (yPos > pageHeight - marginX) break
+            canvas.drawText(ln, marginX, yPos, paint)
+            yPos += lineStep
+        }
+
+        val closingPaint = Paint().apply {
+            color = android.graphics.Color.BLACK
+            textSize = 12f
+            typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
+        }
+
+        val now = SimpleDateFormat("yyyy.MM.dd. HH:mm", Locale.getDefault()).format(Date())
+        canvas.drawText("Az ellenőrzési jegyzőkönyvet lezártam: $now", 40f, 780f, closingPaint)
+
+        doc.finishPage(page)
+
+        val outDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Ellenőrzések").apply { mkdirs() }
+        val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date()) + ".pdf"
+        val outFile = File(outDir, fileName)
+
+        return try {
+            FileOutputStream(outFile).use { doc.writeTo(it) }
+            doc.close()
+            outFile
+        } catch (e: Exception) {
+            doc.close()
+            null
+        }
     }
-// --- Jegyzőkönyv lezárása rész ---
-    val closingPaint = Paint().apply {
-        color = android.graphics.Color.parseColor("#000000")
-        textSize = 12f
-        typeface = Typeface.create(Typeface.SERIF, Typeface.ITALIC)
-    }
 
-// Aktuális dátum + idő
-    val now = SimpleDateFormat("yyyy.MM.dd. HH:mm", Locale.getDefault()).format(Date())
+    private fun wrapText(text: String, paint: Paint, maxWidthPx: Float): List<String> {
+        if (text.isBlank()) return emptyList()
+        val words = text.trim().split(Regex("\\s+"))
+        val lines = mutableListOf<String>()
+        val sb = StringBuilder()
 
-// Kiírás a PDF aljára (pl. 60 px margóval a lap aljától)
-    val closingText = "Az ellenőrzési jegyzőkönyvet lezártam: $now"
-
-    canvas.drawText(closingText, 40f, 780f, closingPaint)
-    // --- ZÁRÁS ÉS MENTÉS ---
-    doc.finishPage(page)
-
-    val outDir = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "Ellenőrzések").apply { mkdirs() }
-    val fileName = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-        .format(Date()) + ".pdf"
-    val outFile = File(outDir, fileName)
-
-    return try {
-        FileOutputStream(outFile).use { doc.writeTo(it) }
-        doc.close()
-        outFile
-    } catch (e: Exception) {
-        doc.close()
-        null
-    }
-}
-
-/**
- * Egyszerű szövegtördelő: a Paint mérése alapján a megadott szélességre tördel.
- */
-private fun wrapText(text: String, paint: Paint, maxWidthPx: Float): List<String> {
-    if (text.isBlank()) return emptyList()
-    val words = text.trim().split(Regex("\\s+"))
-    val lines = mutableListOf<String>()
-    val sb = StringBuilder()
-
-    for (w in words) {
-        val probe = if (sb.isEmpty()) w else sb.toString() + " " + w
-        if (paint.measureText(probe) <= maxWidthPx) {
-            if (sb.isEmpty()) sb.append(w) else sb.append(' ').append(w)
-        } else {
-            if (sb.isNotEmpty()) lines.add(sb.toString())
-            sb.clear()
-            if (paint.measureText(w) <= maxWidthPx) {
-                sb.append(w)
+        for (w in words) {
+            val probe = if (sb.isEmpty()) w else sb.toString() + " " + w
+            if (paint.measureText(probe) <= maxWidthPx) {
+                if (sb.isEmpty()) sb.append(w) else sb.append(' ').append(w)
             } else {
-                // nagyon hosszú "szó" (pl. kód) – vágjuk darabokra
-                var rest = w
-                while (rest.isNotEmpty()) {
-                    var cut = rest.length
-                    while (cut > 1 && paint.measureText(rest.substring(0, cut)) > maxWidthPx) cut--
-                    lines.add(rest.substring(0, cut))
-                    rest = rest.substring(cut)
+                if (sb.isNotEmpty()) lines.add(sb.toString())
+                sb.clear()
+                if (paint.measureText(w) <= maxWidthPx) {
+                    sb.append(w)
+                } else {
+                    var rest = w
+                    while (rest.isNotEmpty()) {
+                        var cut = rest.length
+                        while (cut > 1 && paint.measureText(rest.substring(0, cut)) > maxWidthPx) cut--
+                        lines.add(rest.substring(0, cut))
+                        rest = rest.substring(cut)
+                    }
                 }
             }
         }
+
+        if (sb.isNotEmpty()) lines.add(sb.toString())
+        return lines
     }
-    if (sb.isNotEmpty()) lines.add(sb.toString())
-    return lines
-}
-
-
-data class Driver(val name: String, val code: String)
-data class Route(val line: String, val location: String)
-data class Inspector(val name: String, val code: String)
 }
