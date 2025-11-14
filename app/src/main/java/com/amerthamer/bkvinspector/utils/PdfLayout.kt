@@ -1,4 +1,4 @@
-package com.example.justicebringer.utils
+package com.amerthamer.justicebringer.utils
 
 import android.content.Context
 import android.graphics.*

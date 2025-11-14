@@ -1,4 +1,4 @@
-package com.example.justicebringer.data
+package com.amerthamer.justicebringer.data
 
 import android.content.Context
 import android.content.SharedPreferences

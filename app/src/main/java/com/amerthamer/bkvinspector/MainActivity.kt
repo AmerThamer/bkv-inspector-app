@@ -1,9 +1,9 @@
-package com.example.justicebringer
+package com.amerthamer.justicebringer
 
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.justicebringer.databinding.ActivityMainBinding
+import com.amerthamer.justicebringer.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 

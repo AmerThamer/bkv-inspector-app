@@ -1,4 +1,4 @@
-package com.example.justicebringer
+package com.amerthamer.justicebringer
 
 import android.content.Intent
 import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -6,10 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.example.justicebringer.data.AppPreferences
-import com.example.justicebringer.data.DataStorage
-import com.example.justicebringer.databinding.ActivitySettingsBinding
-import com.example.justicebringer.utils.FileUtils
+import com.amerthamer.justicebringer.data.AppPreferences
+import com.amerthamer.justicebringer.data.DataStorage
+import com.amerthamer.justicebringer.databinding.ActivitySettingsBinding
+import com.amerthamer.justicebringer.utils.FileUtils
 import com.google.android.material.snackbar.Snackbar
 
 class SettingsActivity : AppCompatActivity() {

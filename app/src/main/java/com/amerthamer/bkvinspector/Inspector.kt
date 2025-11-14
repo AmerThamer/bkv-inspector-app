@@ -1,4 +1,4 @@
-package com.example.justicebringer
+package com.amerthamer.justicebringer
 
 data class Inspector(
     val name: String,

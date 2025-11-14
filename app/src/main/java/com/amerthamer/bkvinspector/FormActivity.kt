@@ -1,4 +1,4 @@
-package com.example.justicebringer
+package com.amerthamer.justicebringer
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -14,8 +14,8 @@ import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import com.example.justicebringer.data.DataStorage
-import com.example.justicebringer.databinding.ActivityFormBinding
+import com.amerthamer.justicebringer.data.DataStorage
+import com.amerthamer.justicebringer.databinding.ActivityFormBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import java.io.FileOutputStream

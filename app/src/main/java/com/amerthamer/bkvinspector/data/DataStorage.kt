@@ -1,10 +1,10 @@
-package com.example.justicebringer.data
+package com.amerthamer.justicebringer.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.justicebringer.Driver
-import com.example.justicebringer.Route
-import com.example.justicebringer.Inspector
+import com.amerthamer.justicebringer.Driver
+import com.amerthamer.justicebringer.Route
+import com.amerthamer.justicebringer.Inspector
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 

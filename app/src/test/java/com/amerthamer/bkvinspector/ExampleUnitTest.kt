@@ -1,4 +1,4 @@
-package com.example.justicebringer
+package com.amerthamer.justicebringer
 
 import org.junit.Test
 
