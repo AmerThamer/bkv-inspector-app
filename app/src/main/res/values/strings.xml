@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Justicebringer</string>
+    <string name="app_name">BKV Inspector</string>
 
     <!-- Pozitív észrevételek -->
     <string name="pozitiv_eszrevetel1">Ismeri a lámpaprogramot</string>
